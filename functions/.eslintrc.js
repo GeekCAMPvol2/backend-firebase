@@ -1,3 +1,4 @@
+/** @type {import('@types/eslint').Linter.BaseConfig} */
 module.exports = {
   root: true,
   env: {
@@ -6,27 +7,40 @@ module.exports = {
   },
   extends: [
     "eslint:recommended",
-    "plugin:import/errors",
-    "plugin:import/warnings",
-    "plugin:import/typescript",
-    "google",
+    "plugin:import/recommended",
     "plugin:@typescript-eslint/recommended",
+    "plugin:import/typescript",
+    "prettier",
   ],
-  parser: "@typescript-eslint/parser",
-  parserOptions: {
-    project: ["tsconfig.json", "tsconfig.dev.json"],
-    sourceType: "module",
-  },
+  // parser: "@typescript-eslint/parser",
+  // parserOptions: {
+  //   project: ["tsconfig.json", "tsconfig.dev.json"],
+  //   sourceType: "module",
+  // },
   ignorePatterns: [
     "/lib/**/*", // Ignore built files.
   ],
-  plugins: [
-    "@typescript-eslint",
-    "import",
-  ],
+  plugins: ["@typescript-eslint", "unused-imports"],
   rules: {
-    "quotes": ["error", "double"],
-    "import/no-unresolved": 0,
-    "indent": ["error", 2],
+    "@typescript-eslint/no-unused-vars": "off",
+    "unused-imports/no-unused-imports": "warn",
+    "import/order": [
+      "warn",
+      {
+        groups: [
+          "builtin",
+          "external",
+          "internal",
+          "parent",
+          "sibling",
+          "index",
+          "object",
+          "type",
+        ],
+        "newlines-between": "always",
+        pathGroupsExcludedImportTypes: ["builtin"],
+        alphabetize: { order: "asc", caseInsensitive: true },
+      },
+    ],
   },
 };
