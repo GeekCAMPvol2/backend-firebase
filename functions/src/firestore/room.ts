@@ -163,12 +163,18 @@ export const gameQuestionSchema = z.object({
 
 type GameQuestion = z.infer<typeof gameQuestionSchema>;
 
+// memberAnswerMap[userId][questionIndex] = answeredPrice;
+export const memberAnswerMapSchema = z.record(z.record(z.number().int()));
+
+export type MemberAnswerMap = z.infer<typeof memberAnswerMapSchema>;
+
 export const roomGameStartedStateSchema = z.object({
   status: z.literal("GAME_STARTED"),
   members: z.array(roomMemberSchema),
   timeLimit: z.number(),
   questionCount: z.number(),
   questions: z.array(gameQuestionSchema),
+  memberAnswerMap: memberAnswerMapSchema,
 });
 
 export type RoomGameStartedState = z.infer<typeof roomGameStartedStateSchema>;
@@ -197,5 +203,44 @@ const createRoomGameStartedState = async (
     status: "GAME_STARTED",
     ...inheritProps,
     questions,
+    memberAnswerMap: {},
   };
+};
+
+export const saveMemberAnswer = async (
+  roomId: string,
+  userId: string,
+  questionIndex: number,
+  answeredPrice: number
+): Promise<void> => {
+  await firestore.runTransaction(async (tx) => {
+    if (answeredPrice === Math.floor(answeredPrice)) {
+      throw Error("answeredPrice must be integer");
+    }
+
+    const roomDoc = await getRoomDocWithTransaction(roomId, tx);
+
+    // 部屋がゲーム開始後状態であることを確認
+    const roomState = roomGameStartedStateSchema.parse(roomDoc.data());
+
+    const memberIndex = roomState.members.findIndex(
+      (member) => member.userId === userId
+    );
+    if (memberIndex < 0) throw Error("You are not joined specified room");
+
+    const question = roomState.questions[questionIndex];
+    if (question == null) throw Error("questionIndex is out of range");
+
+    const now = Date.now();
+    const presentedAtMillis = (
+      question.presentedAt as FirestoreTimestamp
+    ).toMillis();
+    const closedAtMillis = presentedAtMillis + roomState.timeLimit * 1000;
+    if (now < presentedAtMillis || now > closedAtMillis)
+      throw Error("specified question is not current");
+
+    tx.update(roomDoc.ref, {
+      [`memberAnswerMap.${userId}.${questionIndex}`]: answeredPrice,
+    });
+  });
 };
