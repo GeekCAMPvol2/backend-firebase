@@ -145,7 +145,7 @@ export const saveMemberReadyState = async (
     );
 
     if (isAllMemberReady) {
-      const nextState = await createRoomGameStartedState(roomId, roomState, tx);
+      const nextState = await createRoomGameStartedState(roomState);
       tx.set(getRoomDocRefById(roomId), nextState);
     } else {
       tx.update(roomDoc.ref, {
@@ -174,9 +174,7 @@ export const roomGameStartedStateSchema = z.object({
 export type RoomGameStartedState = z.infer<typeof roomGameStartedStateSchema>;
 
 const createRoomGameStartedState = async (
-  roomId: string,
-  roomState: RoomInvitingMembersState,
-  transaction: FirestoreTransaction
+  roomState: RoomInvitingMembersState
 ): Promise<RoomGameStartedState> => {
   const inheritProps = (({ members, timeLimit, questionCount }) => ({
     members,
