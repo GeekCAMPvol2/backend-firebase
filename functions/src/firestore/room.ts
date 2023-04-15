@@ -22,7 +22,7 @@ export const roomInvitingMembersStateSchema = z.object({
   status: z.literal("INVITING_MEMBERS"),
   members: z.array(roomMemberSchema),
   membersReadyState: z.record(z.literal(true)),
-  timeLimit: z.number(),
+  timeLimitSeconds: z.number(),
   questionCount: z.number(),
 });
 
@@ -32,14 +32,14 @@ export type RoomInvitingMembersState = z.infer<
 
 export const createAndSaveRoom = async (
   firstMember: RoomMember,
-  timeLimit: number,
+  timeLimitSeconds: number,
   questionCount: number
 ): Promise<{ roomId: string }> => {
   const roomState: RoomInvitingMembersState = {
     status: "INVITING_MEMBERS",
     members: [firstMember],
     membersReadyState: {},
-    timeLimit,
+    timeLimitSeconds,
     questionCount,
   };
 
@@ -170,7 +170,7 @@ export type MemberAnswerMap = z.infer<typeof memberAnswerMapSchema>;
 export const roomGameStartedStateSchema = z.object({
   status: z.literal("GAME_STARTED"),
   members: z.array(roomMemberSchema),
-  timeLimit: z.number(),
+  timeLimitSeconds: z.number(),
   questionCount: z.number(),
   questions: z.array(gameQuestionSchema),
   memberAnswerMap: memberAnswerMapSchema,
@@ -181,9 +181,9 @@ export type RoomGameStartedState = z.infer<typeof roomGameStartedStateSchema>;
 const createRoomGameStartedState = async (
   roomState: RoomInvitingMembersState
 ): Promise<RoomGameStartedState> => {
-  const inheritProps = (({ members, timeLimit, questionCount }) => ({
+  const inheritProps = (({ members, timeLimitSeconds, questionCount }) => ({
     members,
-    timeLimit,
+    timeLimitSeconds,
     questionCount,
   }))(roomState) satisfies Partial<RoomInvitingMembersState>;
 
@@ -191,7 +191,7 @@ const createRoomGameStartedState = async (
   const now = Date.now();
 
   const questionIntervalSeconds =
-    roomState.timeLimit + GAME_WAITING_NEXT_QUESTION_MILLIS;
+    roomState.timeLimitSeconds + GAME_WAITING_NEXT_QUESTION_MILLIS;
 
   const questions: GameQuestion[] = products.map((p, i) => ({
     presentedAt: FirestoreTimestamp.fromMillis(
@@ -237,7 +237,8 @@ export const saveMemberAnswer = async (
     const presentedAtMillis = (
       question.presentedAt as FirestoreTimestamp
     ).toMillis();
-    const closedAtMillis = presentedAtMillis + roomState.timeLimit * 1000;
+    const closedAtMillis =
+      presentedAtMillis + roomState.timeLimitSeconds * 1000;
     if (now < presentedAtMillis || now > closedAtMillis)
       throw Error("specified question is not current");
 

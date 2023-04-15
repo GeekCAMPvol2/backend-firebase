@@ -3,12 +3,12 @@ import { z } from "zod";
 
 import { createAndSaveRoom } from "../firestore/room";
 
-const DEFAULT_TIME_LIMIT = 30;
+const DEFAULT_TIME_LIMIT_SECONDS = 30;
 const DEFAULT_QUESTION_COUNT = 5;
 
 const createRoomParamsSchema = z.object({
   playerName: z.string().default("default"),
-  timeLimit: z.number().default(DEFAULT_TIME_LIMIT),
+  timeLimitSeconds: z.number().default(DEFAULT_TIME_LIMIT_SECONDS),
   questionCount: z.number().default(DEFAULT_QUESTION_COUNT),
 });
 
@@ -31,12 +31,12 @@ export const createRoom = functions.https.onCall(
     }
 
     try {
-      const { playerName, questionCount, timeLimit } =
+      const { playerName, questionCount, timeLimitSeconds } =
         createRoomParamsSchema.parse(data);
 
       const { roomId } = await createAndSaveRoom(
         { userId, playerName },
-        timeLimit,
+        timeLimitSeconds,
         questionCount
       );
 
