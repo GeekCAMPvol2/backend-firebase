@@ -1,10 +1,14 @@
 import { Timestamp as FirestoreTimestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 
+import { fetchProductDetails } from "../deps/fetchProductDetails";
 import { firestore } from "../deps/firestore";
 import { firestoreTimestampLooseSchema } from "../schemas/firebase";
 
 import type { Transaction as FirestoreTransaction } from "firebase-admin/firestore";
+
+const GAME_START_PREPARE_MILLIS = 5_000;
+const GAME_QUESTION_INTERVAL_MILLIS = 10_000;
 
 // room入室用
 export const roomMemberSchema = z.object({
@@ -135,54 +139,65 @@ export const setMemberReadyState = async (
       delete membersReadyState[userId];
     }
 
-    await tx.update(roomDoc.ref, {
-      membersReadyState,
-    } satisfies Partial<RoomInvitingMembersState>);
+    const isAllMemberReady = roomState.members.reduce(
+      (prev, member) => prev && membersReadyState[member.userId],
+      true
+    );
+
+    if (isAllMemberReady) {
+      const nextState = await createRoomGameStartedState(roomId, roomState, tx);
+      tx.set(getRoomDocRefById(roomId), nextState);
+    } else {
+      tx.update(roomDoc.ref, {
+        membersReadyState,
+      } satisfies Partial<RoomInvitingMembersState>);
+    }
   });
 };
 
-export const presentedQuestionSchema = z.object({
+export const gameQuestionSchema = z.object({
   presentedAt: firestoreTimestampLooseSchema,
   productTitle: z.string(),
   productPrice: z.number(),
 });
 
-type PresentedQuestion = z.infer<typeof presentedQuestionSchema>;
+type GameQuestion = z.infer<typeof gameQuestionSchema>;
 
-export const roomPlayingStateSchema = z.object({
-  status: z.literal("PLAYING"),
+export const roomGameStartedStateSchema = z.object({
+  status: z.literal("GAME_STARTED"),
   members: z.array(roomMemberSchema),
   timeLimit: z.number(),
   questionCount: z.number(),
-  presentedQuestions: z.array(presentedQuestionSchema),
+  questions: z.array(gameQuestionSchema),
 });
 
-export type RoomPlayingMembersState = z.infer<typeof roomPlayingStateSchema>;
+export type RoomGameStartedState = z.infer<typeof roomGameStartedStateSchema>;
 
-export const transisionToRoomPlayingState = async (
+const createRoomGameStartedState = async (
   roomId: string,
   roomState: RoomInvitingMembersState,
   transaction: FirestoreTransaction
-) => {
+): Promise<RoomGameStartedState> => {
   const inheritProps = (({ members, timeLimit, questionCount }) => ({
     members,
     timeLimit,
     questionCount,
   }))(roomState) satisfies Partial<RoomInvitingMembersState>;
 
-  const presentedAtMillis = Date.now() + 3000;
+  const { products } = await fetchProductDetails({ count: 5 });
+  const now = Date.now();
 
-  const firstQuestion: PresentedQuestion = {
-    presentedAt: FirestoreTimestamp.fromMillis(presentedAtMillis),
-    productTitle: "Test Product 0",
-    productPrice: 1000,
-  };
+  const questions: GameQuestion[] = products.map((p, i) => ({
+    presentedAt: FirestoreTimestamp.fromMillis(
+      now + GAME_START_PREPARE_MILLIS + GAME_QUESTION_INTERVAL_MILLIS * i
+    ),
+    productTitle: p.title,
+    productPrice: p.price,
+  }));
 
-  const nextRoomState: RoomPlayingMembersState = {
-    status: "PLAYING",
+  return {
+    status: "GAME_STARTED",
     ...inheritProps,
-    presentedQuestions: [firstQuestion],
+    questions,
   };
-
-  await transaction.set(getRoomDocRefById(roomId), nextRoomState);
 };
