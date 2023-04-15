@@ -1,7 +1,7 @@
 import * as functions from "firebase-functions";
 import { z } from "zod";
 
-import * as roomStore from "../firestore/room";
+import { saveUserLeaveRoom } from "../firestore/room";
 
 const leaveRoomParamsSchema = z.object({
   roomId: z.string(),
@@ -26,7 +26,7 @@ export const leaveRoom = functions.https.onCall(
     try {
       const { roomId } = leaveRoomParamsSchema.parse(data);
 
-      await roomStore.leaveRoom(roomId, userId);
+      await saveUserLeaveRoom(roomId, userId);
 
       return {};
     } catch (e) {

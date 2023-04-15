@@ -1,7 +1,7 @@
 import * as functions from "firebase-functions";
 import { z } from "zod";
 
-import * as roomStore from "../firestore/room";
+import { saveMemberReadyState } from "../firestore/room";
 
 const ReadyRoomParamsSchema = z.object({
   roomId: z.string(),
@@ -26,7 +26,7 @@ export const setMemberReadyState = functions.https.onCall(
 
     try {
       const { roomId, ready } = ReadyRoomParamsSchema.parse(data);
-      await roomStore.setMemberReadyState(roomId, userId, ready);
+      await saveMemberReadyState(roomId, userId, ready);
 
       return {};
     } catch (e) {

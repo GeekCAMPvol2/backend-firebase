@@ -1,7 +1,7 @@
 import * as functions from "firebase-functions";
 import { z } from "zod";
 
-import * as roomStore from "../firestore/room";
+import { createAndSaveRoom } from "../firestore/room";
 
 const DEFAULT_TIME_LIMIT = 30;
 const DEFAULT_QUESTION_COUNT = 5;
@@ -34,7 +34,7 @@ export const createRoom = functions.https.onCall(
       const { playerName, questionCount, timeLimit } =
         createRoomParamsSchema.parse(data);
 
-      const { roomId } = await roomStore.createRoom(
+      const { roomId } = await createAndSaveRoom(
         { userId, playerName },
         timeLimit,
         questionCount

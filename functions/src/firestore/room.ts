@@ -31,7 +31,7 @@ export type RoomInvitingMembersState = z.infer<
   typeof roomInvitingMembersStateSchema
 >;
 
-export const createRoom = async (
+export const createAndSaveRoom = async (
   firstMember: RoomMember,
   timeLimit: number,
   questionCount: number
@@ -74,7 +74,7 @@ const getRoomDocWithTransaction = async (
 //   return roomDoc;
 // };
 
-export const joinRoom = async (
+export const saveUserJoinRoom = async (
   roomId: string,
   member: RoomMember
 ): Promise<void> => {
@@ -90,7 +90,7 @@ export const joinRoom = async (
   });
 };
 
-export const leaveRoom = async (
+export const saveUserLeaveRoom = async (
   roomId: string,
   userId: string
 ): Promise<void> => {
@@ -114,7 +114,7 @@ export const leaveRoom = async (
   });
 };
 
-export const setMemberReadyState = async (
+export const saveMemberReadyState = async (
   roomId: string,
   userId: string,
   ready: boolean

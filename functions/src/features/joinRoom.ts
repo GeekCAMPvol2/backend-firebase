@@ -1,7 +1,7 @@
 import * as functions from "firebase-functions";
 import { z } from "zod";
 
-import * as roomStore from "../firestore/room";
+import { saveUserJoinRoom } from "../firestore/room";
 
 const joinRoomParamsSchema = z.object({
   roomId: z.string(),
@@ -27,7 +27,7 @@ export const joinRoom = functions.https.onCall(
     try {
       const { roomId, playerName } = joinRoomParamsSchema.parse(data);
 
-      await roomStore.joinRoom(roomId, { userId, playerName });
+      await saveUserJoinRoom(roomId, { userId, playerName });
 
       return {};
     } catch (e) {
