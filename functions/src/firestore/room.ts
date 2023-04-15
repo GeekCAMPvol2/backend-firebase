@@ -7,8 +7,7 @@ import { firestoreTimestampLooseSchema } from "../schemas/firebase";
 
 import type { Transaction as FirestoreTransaction } from "firebase-admin/firestore";
 
-const GAME_START_PREPARE_MILLIS = 5_000;
-const GAME_QUESTION_INTERVAL_MILLIS = 10_000;
+const GAME_WAITING_NEXT_QUESTION_MILLIS = 10_000;
 
 // room入室用
 export const roomMemberSchema = z.object({
@@ -191,9 +190,12 @@ const createRoomGameStartedState = async (
   const { products } = await fetchProductDetails({ count: 5 });
   const now = Date.now();
 
+  const questionIntervalSeconds =
+    roomState.timeLimit + GAME_WAITING_NEXT_QUESTION_MILLIS;
+
   const questions: GameQuestion[] = products.map((p, i) => ({
     presentedAt: FirestoreTimestamp.fromMillis(
-      now + GAME_START_PREPARE_MILLIS + GAME_QUESTION_INTERVAL_MILLIS * i
+      now + questionIntervalSeconds * 1000 * i
     ),
     productTitle: p.title,
     productPrice: p.price,
