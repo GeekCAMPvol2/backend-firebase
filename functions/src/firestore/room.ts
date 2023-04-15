@@ -40,8 +40,8 @@ export const createAndSaveRoom = async (
     status: "INVITING_MEMBERS",
     members: [firstMember],
     membersReadyState: {},
-    timeLimit: timeLimit,
-    questionCount: questionCount,
+    timeLimit,
+    questionCount,
   };
 
   const docRef = await firestore.collection("rooms").add(roomState);
