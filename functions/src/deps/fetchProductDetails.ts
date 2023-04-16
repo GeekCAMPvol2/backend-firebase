@@ -7,6 +7,8 @@ export type FetchProductDetailParams = { count: number };
 export type ProductDetail = {
   title: string;
   price: number;
+  images: { imageUrl: string }[];
+  affiliateLink: string;
 };
 
 export type FetchProductDetailsPayload = { products: ProductDetail[] };
@@ -36,6 +38,8 @@ export const fetchProductDetails = async (
     products: payload.map((el) => ({
       title: el.quiz,
       price: el.answer,
+      images: el.images,
+      affiliateLink: el.affiliatelink,
     })),
   };
 };
