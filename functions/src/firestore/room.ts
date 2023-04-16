@@ -7,7 +7,7 @@ import { firestoreTimestampLooseSchema } from "../schemas/firebase";
 
 import type { Transaction as FirestoreTransaction } from "firebase-admin/firestore";
 
-const GAME_WAITING_NEXT_QUESTION_MILLIS = 10_000;
+const GAME_WAITING_NEXT_QUESTION_MILLIS = 10;
 
 // room入室用
 export const roomMemberSchema = z.object({
