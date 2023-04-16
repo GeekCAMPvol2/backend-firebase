@@ -158,6 +158,8 @@ export const gameQuestionSchema = z.object({
   presentedAt: firestoreTimestampLooseSchema,
   productTitle: z.string(),
   productPrice: z.number(),
+  productImageUrl: z.string(),
+  affiliateLink: z.string(),
 });
 
 type GameQuestion = z.infer<typeof gameQuestionSchema>;
@@ -199,6 +201,8 @@ const createRoomGameStartedState = async (
     ),
     productTitle: p.title,
     productPrice: p.price,
+    productImageUrl: p.images[0].imageUrl,
+    affiliateLink: p.affiliateLink,
   }));
 
   return {
