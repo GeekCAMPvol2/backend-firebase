@@ -1,7 +1,10 @@
+import { Timestamp as FirestoreTimestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
 import { z } from "zod";
 
-import { saveMemberAnswer } from "../firestore/room";
+import { firestore } from "../deps/firestore";
+import { getRoomDocWithTransaction } from "../firestore/room";
+import { gameStartedFlowRoomSchema } from "../schemas/room";
 
 const submitAnswerParamsSchema = z.object({
   roomId: z.string(),
@@ -9,16 +12,18 @@ const submitAnswerParamsSchema = z.object({
   answeredPrice: z.number().int(),
 });
 
-type SubmitAnswerResponse = SubmitAnswerPayload | SubmitAnswerError;
+type SubmitAnswerResponse =
+  | SubmitAnswerSuccessResponse
+  | SubmitAnswerErrorResponse;
 
-type SubmitAnswerPayload = Record<string, never>;
+type SubmitAnswerSuccessResponse = Record<string, never>;
 
-type SubmitAnswerError = {
+type SubmitAnswerErrorResponse = {
   error: string;
 };
 
 export const submitAnswer = functions.https.onCall(
-  async (data, context): Promise<SubmitAnswerResponse> => {
+  async (data: unknown, context): Promise<SubmitAnswerResponse> => {
     const userId = context.auth?.uid;
 
     if (userId == null) {
@@ -29,11 +34,53 @@ export const submitAnswer = functions.https.onCall(
       const { roomId, questionIndex, answeredPrice } =
         submitAnswerParamsSchema.parse(data);
 
-      await saveMemberAnswer(roomId, userId, questionIndex, answeredPrice);
+      return await firestore.runTransaction(
+        async (tx): Promise<SubmitAnswerResponse> => {
+          const roomDoc = await getRoomDocWithTransaction(roomId, tx);
+          if (roomDoc == null) {
+            return {
+              error: "The specified room does not exist",
+            };
+          }
 
-      return {};
+          // 部屋がゲーム開始後状態であることを確認
+          const roomState = gameStartedFlowRoomSchema.parse(roomDoc.data());
+
+          const memberIndex = roomState.members.findIndex(
+            (member) => member.userId === userId
+          );
+
+          if (memberIndex < 0) {
+            return {
+              error: "You are not joined specified room",
+            };
+          }
+
+          const question = roomState.questions[questionIndex];
+
+          if (question == null) {
+            return {
+              error: "questionIndex is out of range",
+            };
+          }
+
+          const now = Date.now();
+          const presentedAtMillis = (
+            question.presentedAt as FirestoreTimestamp
+          ).toMillis();
+          const closedAtMillis =
+            presentedAtMillis + roomState.timeLimitSeconds * 1000;
+          if (now < presentedAtMillis || now > closedAtMillis)
+            throw Error("specified question is not current");
+
+          tx.update(roomDoc.ref, {
+            [`memberAnswerMap.${userId}.${questionIndex}`]: answeredPrice,
+          });
+
+          return {};
+        }
+      );
     } catch (e) {
-      if (e instanceof Error) return { error: e.message };
       return { error: "Unknown error" };
     }
   }

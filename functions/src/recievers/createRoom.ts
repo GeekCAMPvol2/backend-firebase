@@ -1,7 +1,8 @@
 import * as functions from "firebase-functions";
 import { z } from "zod";
 
-import { createAndSaveRoom } from "../firestore/room";
+import { firestore } from "../deps/firestore";
+import { InvitingMembersFlowRoom } from "../schemas/room";
 
 const DEFAULT_TIME_LIMIT_SECONDS = 30;
 const DEFAULT_QUESTION_COUNT = 5;
@@ -12,18 +13,18 @@ const createRoomParamsSchema = z.object({
   questionCount: z.number().default(DEFAULT_QUESTION_COUNT),
 });
 
-type CreateRoomResponse = CreateRoomPayload | CreateRoomError;
+type CreateRoomResponse = CreateRoomSuccessResponse | CreateRoomErrorResponse;
 
-type CreateRoomPayload = {
+type CreateRoomSuccessResponse = {
   roomId: string;
 };
 
-type CreateRoomError = {
+type CreateRoomErrorResponse = {
   error: string;
 };
 
 export const createRoom = functions.https.onCall(
-  async (data, context): Promise<CreateRoomResponse> => {
+  async (data: unknown, context): Promise<CreateRoomResponse> => {
     const userId = context.auth?.uid;
 
     if (userId == null) {
@@ -34,11 +35,17 @@ export const createRoom = functions.https.onCall(
       const { playerName, questionCount, timeLimitSeconds } =
         createRoomParamsSchema.parse(data);
 
-      const { roomId } = await createAndSaveRoom(
-        { userId, playerName },
+      const roomState: InvitingMembersFlowRoom = {
+        status: "INVITING_MEMBERS",
+        members: [{ playerName, userId }],
+        membersReadyState: {},
         timeLimitSeconds,
-        questionCount
-      );
+        questionCount,
+      };
+
+      const docRef = await firestore.collection("rooms").add(roomState);
+
+      const roomId = docRef.id;
 
       return { roomId };
     } catch (e) {

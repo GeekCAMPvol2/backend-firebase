@@ -1,23 +1,28 @@
 import * as functions from "firebase-functions";
 import { z } from "zod";
 
-import { saveUserJoinRoom } from "../firestore/room";
+import { firestore } from "../deps/firestore";
+import { getRoomDocWithTransaction } from "../firestore/room";
+import {
+  InvitingMembersFlowRoom,
+  invitingMembersFlowRoomSchema,
+} from "../schemas/room";
 
 const joinRoomParamsSchema = z.object({
   roomId: z.string(),
   playerName: z.string().default("default"),
 });
 
-type JoinRoomResponse = JoinRoomPayload | JoinRoomError;
+type JoinRoomResponse = JoinRoomSuccessResponse | JoinRoomErrorResponse;
 
-type JoinRoomPayload = Record<string, never>;
+type JoinRoomSuccessResponse = Record<string, never>;
 
-type JoinRoomError = {
+type JoinRoomErrorResponse = {
   error: string;
 };
 
 export const joinRoom = functions.https.onCall(
-  async (data, context): Promise<JoinRoomResponse> => {
+  async (data: unknown, context): Promise<JoinRoomResponse> => {
     const userId = context.auth?.uid;
 
     if (userId == null) {
@@ -27,12 +32,27 @@ export const joinRoom = functions.https.onCall(
     try {
       const { roomId, playerName } = joinRoomParamsSchema.parse(data);
 
-      await saveUserJoinRoom(roomId, { userId, playerName });
+      return await firestore.runTransaction(
+        async (tx): Promise<JoinRoomResponse> => {
+          const roomDoc = await getRoomDocWithTransaction(roomId, tx);
+          if (roomDoc == null) {
+            return {
+              error: "The specified room does not exist",
+            };
+          }
 
-      return {};
+          // 部屋がメンバー募集中状態であることを確認
+          const roomState = invitingMembersFlowRoomSchema.parse(roomDoc.data());
+
+          tx.update(roomDoc.ref, {
+            members: [...roomState.members, { playerName, userId }],
+          } satisfies Partial<InvitingMembersFlowRoom>);
+
+          return {};
+        }
+      );
     } catch (e) {
-      if (e instanceof Error) return { error: e.message };
-      return { error: "Unknown error" };
+      return { error: "Internal server error" };
     }
   }
 );
