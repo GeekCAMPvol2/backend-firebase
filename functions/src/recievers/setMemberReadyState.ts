@@ -23,9 +23,10 @@ type SetMemberReadyStateResponse =
   | SetMemberReadyStatePayload
   | SetMemberReadyStateError;
 
-type SetMemberReadyStatePayload = Record<string, never>;
+type SetMemberReadyStatePayload = { success: true };
 
 type SetMemberReadyStateError = {
+  success: false;
   error: string;
 };
 
@@ -65,7 +66,7 @@ export const setMemberReadyState = functions.https.onCall(
     const userId = context.auth?.uid;
 
     if (userId == null) {
-      return { error: "User authentication failed" };
+      return { success: false, error: "User authentication failed" };
     }
 
     try {
@@ -76,6 +77,7 @@ export const setMemberReadyState = functions.https.onCall(
           const roomDoc = await getRoomDocWithTransaction(roomId, tx);
           if (roomDoc == null) {
             return {
+              success: false,
               error: "The specified room does not exist",
             };
           }
@@ -89,6 +91,7 @@ export const setMemberReadyState = functions.https.onCall(
 
           if (memberIndex < 0) {
             return {
+              success: false,
               error: "You are not joined specified room",
             };
           }
@@ -115,11 +118,11 @@ export const setMemberReadyState = functions.https.onCall(
             } satisfies Partial<InvitingMembersFlowRoom>);
           }
 
-          return {};
+          return { success: true };
         }
       );
     } catch (e) {
-      return { error: "Internal server error" };
+      return { success: false, error: "Internal server error" };
     }
   }
 );

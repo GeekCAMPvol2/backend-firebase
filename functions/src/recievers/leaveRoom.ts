@@ -14,9 +14,10 @@ const leaveRoomParamsSchema = z.object({
 
 type LeaveRoomResponse = LeaveRoomSuccessResponse | LeaveRoomErrorResponse;
 
-type LeaveRoomSuccessResponse = Record<string, never>;
+type LeaveRoomSuccessResponse = { success: true };
 
 type LeaveRoomErrorResponse = {
+  success: false;
   error: string;
 };
 
@@ -25,7 +26,7 @@ export const leaveRoom = functions.https.onCall(
     const userId = context.auth?.uid;
 
     if (userId == null) {
-      return { error: "User authentication failed" };
+      return { success: false, error: "User authentication failed" };
     }
 
     try {
@@ -36,6 +37,7 @@ export const leaveRoom = functions.https.onCall(
           const roomDoc = await getRoomDocWithTransaction(roomId, tx);
           if (roomDoc == null) {
             return {
+              success: false,
               error: "The specified room does not exist",
             };
           }
@@ -55,11 +57,11 @@ export const leaveRoom = functions.https.onCall(
             membersReadyState,
           } satisfies Partial<InvitingMembersFlowRoom>);
 
-          return {};
+          return { success: true };
         }
       );
     } catch (e) {
-      return { error: "Internal server error" };
+      return { success: false, error: "Internal server error" };
     }
   }
 );

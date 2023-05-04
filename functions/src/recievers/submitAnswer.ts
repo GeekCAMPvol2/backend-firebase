@@ -16,9 +16,10 @@ type SubmitAnswerResponse =
   | SubmitAnswerSuccessResponse
   | SubmitAnswerErrorResponse;
 
-type SubmitAnswerSuccessResponse = Record<string, never>;
+type SubmitAnswerSuccessResponse = { success: true };
 
 type SubmitAnswerErrorResponse = {
+  success: false;
   error: string;
 };
 
@@ -27,7 +28,7 @@ export const submitAnswer = functions.https.onCall(
     const userId = context.auth?.uid;
 
     if (userId == null) {
-      return { error: "User authentication failed" };
+      return { success: false, error: "User authentication failed" };
     }
 
     try {
@@ -39,6 +40,7 @@ export const submitAnswer = functions.https.onCall(
           const roomDoc = await getRoomDocWithTransaction(roomId, tx);
           if (roomDoc == null) {
             return {
+              success: false,
               error: "The specified room does not exist",
             };
           }
@@ -52,6 +54,7 @@ export const submitAnswer = functions.https.onCall(
 
           if (memberIndex < 0) {
             return {
+              success: false,
               error: "You are not joined specified room",
             };
           }
@@ -60,6 +63,7 @@ export const submitAnswer = functions.https.onCall(
 
           if (question == null) {
             return {
+              success: false,
               error: "questionIndex is out of range",
             };
           }
@@ -77,11 +81,11 @@ export const submitAnswer = functions.https.onCall(
             [`memberAnswerMap.${userId}.${questionIndex}`]: answeredPrice,
           });
 
-          return {};
+          return { success: true };
         }
       );
     } catch (e) {
-      return { error: "Unknown error" };
+      return { success: false, error: "Unknown error" };
     }
   }
 );

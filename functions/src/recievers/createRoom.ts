@@ -16,10 +16,12 @@ const createRoomParamsSchema = z.object({
 type CreateRoomResponse = CreateRoomSuccessResponse | CreateRoomErrorResponse;
 
 type CreateRoomSuccessResponse = {
+  success: true;
   roomId: string;
 };
 
 type CreateRoomErrorResponse = {
+  success: false;
   error: string;
 };
 
@@ -28,7 +30,7 @@ export const createRoom = functions.https.onCall(
     const userId = context.auth?.uid;
 
     if (userId == null) {
-      return { error: "User authentication failed" };
+      return { success: false, error: "User authentication failed" };
     }
 
     try {
@@ -47,10 +49,9 @@ export const createRoom = functions.https.onCall(
 
       const roomId = docRef.id;
 
-      return { roomId };
+      return { success: true, roomId };
     } catch (e) {
-      if (e instanceof Error) return { error: e.message };
-      return { error: "Unknown error" };
+      return { success: false, error: "Unknown error" };
     }
   }
 );
