@@ -1,5 +1,4 @@
-export { createRoom } from "./features/createRoom";
-export { joinRoom } from "./features/joinRoom";
-export { leaveRoom } from "./features/leaveRoom";
-export { setMemberReadyState } from "./features/setMemberReadyState";
-export { submitAnswer } from "./features/submitAnswer";
+export { createRoom } from "./recievers/createRoom";
+export { joinRoom } from "./recievers/joinRoom";
+export { leaveRoom } from "./recievers/leaveRoom";
+export { setMemberReadyState } from "./recievers/setMemberReadyState";
