@@ -74,8 +74,13 @@ export const submitAnswer = functions.https.onCall(
           ).toMillis();
           const closedAtMillis =
             presentedAtMillis + roomState.timeLimitSeconds * 1000;
-          if (now < presentedAtMillis || now > closedAtMillis)
-            throw Error("specified question is not current");
+
+          if (now < presentedAtMillis || now > closedAtMillis) {
+            return {
+              success: false,
+              error: "specified question is not current",
+            };
+          }
 
           tx.update(roomDoc.ref, {
             [`memberAnswerMap.${userId}.${questionIndex}`]: answeredPrice,
