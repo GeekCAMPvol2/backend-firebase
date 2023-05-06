@@ -27,16 +27,21 @@ export const submitAnswer = functions.https.onCall(
   async (data: unknown, context): Promise<SubmitAnswerResponse> => {
     const userId = context.auth?.uid;
 
+    // ログインしていないクライアントからのリクエストは弾く
     if (userId == null) {
       return { success: false, error: "User authentication failed" };
     }
 
     try {
+      // パラメーターをZodでパース
       const { roomId, questionIndex, answeredPrice } =
         submitAnswerParamsSchema.parse(data);
 
+      // Firestoreのトランザクションを開始
+      // 内側のasync関数の戻り値がそのままrunTransactionの戻り値になる
       return await firestore.runTransaction(
         async (tx): Promise<SubmitAnswerResponse> => {
+          // Firestoreからroomを取得し、nullチェックする
           const roomDoc = await getRoomDocWithTransaction(roomId, tx);
           if (roomDoc == null) {
             return {
@@ -45,9 +50,10 @@ export const submitAnswer = functions.https.onCall(
             };
           }
 
-          // 部屋がゲーム開始後状態であることを確認
+          // 取得したroomがゲーム開始済み状態であることを、Zodのパースによって確認する
           const roomState = gameStartedFlowRoomSchema.parse(roomDoc.data());
 
+          // roomの参加メンバーにが含まれることを確認する
           const memberIndex = roomState.members.findIndex(
             (member) => member.userId === userId
           );
@@ -59,8 +65,8 @@ export const submitAnswer = functions.https.onCall(
             };
           }
 
+          // リクエストで指定されたquestion (問題) を取得
           const question = roomState.questions[questionIndex];
-
           if (question == null) {
             return {
               success: false,
@@ -68,6 +74,7 @@ export const submitAnswer = functions.https.onCall(
             };
           }
 
+          // 指定のquestionが出題中の問題と一致するか確認
           const now = Date.now();
           const presentedAtMillis = (
             question.presentedAt as FirestoreTimestamp
@@ -82,6 +89,7 @@ export const submitAnswer = functions.https.onCall(
             };
           }
 
+          // 回答を記録する
           tx.update(roomDoc.ref, {
             [`memberAnswerMap.${userId}.${questionIndex}`]: answeredPrice,
           });
