@@ -2,9 +2,13 @@
 
 ## emulators
 
-```
+```bash
+# パッケージインストール
 npm install
+# firebase利用時に使うパッケージのグローバルインストール
 npm install -g firebase-tools
-npm tsc
+# ビルド
+npm run build
+# エミュレーター起動
 firebase emulators:start
 ```
