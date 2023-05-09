@@ -2,6 +2,7 @@ import { Timestamp as FirestoreTimestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
 import { z } from "zod";
 
+import { GAME_WAITING_NEXT_QUESTION_SECONDS } from "../constants";
 import { fetchProductDetails } from "../deps/fetchProductDetails";
 import { firestore } from "../deps/firestore";
 import { getRoomDocWithTransaction } from "../firestore/room";
@@ -11,8 +12,6 @@ import {
   GameStartedFlowRoom,
   invitingMembersFlowRoomSchema,
 } from "../schemas/room";
-
-const GAME_WAITING_NEXT_QUESTION_SECONDS = 10;
 
 const ReadyRoomParamsSchema = z.object({
   roomId: z.string(),
