@@ -1,16 +1,17 @@
 import * as functions from "firebase-functions";
 import { z } from "zod";
 
+import {
+  GAME_DEFAULT_QUESTION_COUNT,
+  GAME_DEFAULT_TIME_LIMIT_SECONDS,
+} from "../constants";
 import { firestore } from "../deps/firestore";
 import { InvitingMembersFlowRoom } from "../schemas/room";
 
-const DEFAULT_TIME_LIMIT_SECONDS = 30;
-const DEFAULT_QUESTION_COUNT = 5;
-
 const createRoomParamsSchema = z.object({
   playerName: z.string().default("default"),
-  timeLimitSeconds: z.number().default(DEFAULT_TIME_LIMIT_SECONDS),
-  questionCount: z.number().default(DEFAULT_QUESTION_COUNT),
+  timeLimitSeconds: z.number().default(GAME_DEFAULT_TIME_LIMIT_SECONDS),
+  questionCount: z.number().default(GAME_DEFAULT_QUESTION_COUNT),
 });
 
 type CreateRoomResponse = CreateRoomSuccessResponse | CreateRoomErrorResponse;
