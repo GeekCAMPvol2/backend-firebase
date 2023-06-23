@@ -84,7 +84,7 @@ const prepareGameStart = async (
 ): Promise<RoomInGameStarted> => {
   const { members, timeLimitSeconds, questionCount } = roomState;
 
-  const { products } = await fetchProductDetails({ count: 5 });
+  const { products } = await fetchProductDetails({ count: questionCount });
   const questions: Question[] = products.map((p) => ({
     productTitle: p.title,
     productPrice: p.price,
