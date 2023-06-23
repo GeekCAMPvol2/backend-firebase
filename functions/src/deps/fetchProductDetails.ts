@@ -13,7 +13,7 @@ export type ProductDetail = {
 
 export type FetchProductDetailsPayload = { products: ProductDetail[] };
 
-const endpointResponseBodySchema = z.array(
+export const endpointResponseBodySchema = z.array(
   z.object({
     quiz: z.string(),
     answer: z.number().int(),
@@ -22,17 +22,32 @@ const endpointResponseBodySchema = z.array(
   })
 );
 
-// type EndpointResponseBody = z.infer<typeof endpointResponseBodySchema>;
+export type EndpointResponseBody = z.infer<typeof endpointResponseBodySchema>;
+
+const fetchAndParseEndpoint = async (): Promise<EndpointResponseBody> => {
+  const q = new URLSearchParams({
+    hits: "1",
+  });
+  const response = await fetch(`${FETCH_PRODUCT_DETAILS_ENDPOINT}?${q}`);
+  const payload = endpointResponseBodySchema.parse(await response.json());
+  return payload;
+};
+
+export const fetchRawProductDetails = async (
+  count: number
+): Promise<EndpointResponseBody> => {
+  const responses = Array.from({ length: count }, () =>
+    fetchAndParseEndpoint()
+  );
+  const payloads = await Promise.all(responses);
+  const flatten = payloads.flat();
+  return flatten;
+};
 
 export const fetchProductDetails = async (
   params: FetchProductDetailParams
 ): Promise<FetchProductDetailsPayload> => {
-  const q = new URLSearchParams({
-    hits: `${params.count}`,
-  });
-
-  const res = await fetch(`${FETCH_PRODUCT_DETAILS_ENDPOINT}?${q}`);
-  const payload = endpointResponseBodySchema.parse(await res.json());
+  const payload = await fetchRawProductDetails(params.count);
 
   return {
     products: payload.map((el) => ({
