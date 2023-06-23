@@ -4,13 +4,14 @@ import { z } from "zod";
 import { firestore } from "../deps/firestore";
 import { getRoomDocWithTransaction } from "../firestore/room";
 import {
-  InvitingMembersFlowRoom,
-  invitingMembersFlowRoomSchema,
+  RoomInInvitingMembers,
+  RoomMember,
+  roomInInvitingMembersSchema,
 } from "../schemas/room";
 
 const joinRoomParamsSchema = z.object({
   roomId: z.string(),
-  playerName: z.string().default("default"),
+  memberDisplayName: z.string().default("default"),
 });
 
 type JoinRoomResponse = JoinRoomSuccessResponse | JoinRoomErrorResponse;
@@ -25,13 +26,12 @@ type JoinRoomErrorResponse = {
 export const joinRoom = functions.https.onCall(
   async (data: unknown, context): Promise<JoinRoomResponse> => {
     const userId = context.auth?.uid;
-
     if (userId == null) {
       return { success: false, error: "User authentication failed" };
     }
 
     try {
-      const { roomId, playerName } = joinRoomParamsSchema.parse(data);
+      const { roomId, memberDisplayName } = joinRoomParamsSchema.parse(data);
 
       return await firestore.runTransaction(
         async (tx): Promise<JoinRoomResponse> => {
@@ -44,12 +44,16 @@ export const joinRoom = functions.https.onCall(
           }
 
           // 部屋がメンバー募集中状態であることを確認
-          const roomState = invitingMembersFlowRoomSchema.parse(roomDoc.data());
+          const roomState = roomInInvitingMembersSchema.parse(roomDoc.data());
+          const members: RoomMember[] = [
+            ...roomState.members,
+            { displayName: memberDisplayName, userId },
+          ];
+          const updatePayload: Partial<RoomInInvitingMembers> = {
+            members: members,
+          };
 
-          tx.update(roomDoc.ref, {
-            members: [...roomState.members, { playerName, userId }],
-          } satisfies Partial<InvitingMembersFlowRoom>);
-
+          tx.update(roomDoc.ref, updatePayload);
           return { success: true };
         }
       );

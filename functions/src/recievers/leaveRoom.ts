@@ -4,8 +4,8 @@ import { z } from "zod";
 import { firestore } from "../deps/firestore";
 import { getRoomDocWithTransaction } from "../firestore/room";
 import {
-  InvitingMembersFlowRoom,
-  invitingMembersFlowRoomSchema,
+  RoomInInvitingMembers,
+  roomInInvitingMembersSchema,
 } from "../schemas/room";
 
 const leaveRoomParamsSchema = z.object({
@@ -43,7 +43,7 @@ export const leaveRoom = functions.https.onCall(
           }
 
           // 部屋がメンバー募集中状態であることを確認
-          const roomState = invitingMembersFlowRoomSchema.parse(roomDoc.data());
+          const roomState = roomInInvitingMembersSchema.parse(roomDoc.data());
 
           const members = roomState.members.filter(
             (member) => member.userId !== userId
@@ -55,7 +55,7 @@ export const leaveRoom = functions.https.onCall(
           tx.update(roomDoc.ref, {
             members,
             membersReadyState,
-          } satisfies Partial<InvitingMembersFlowRoom>);
+          } satisfies Partial<RoomInInvitingMembers>);
 
           return { success: true };
         }

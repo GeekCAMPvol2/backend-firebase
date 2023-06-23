@@ -1,3 +1,4 @@
+import { Timestamp as FirestoreTimestamp } from "firebase-admin/firestore";
 import * as functions from "firebase-functions";
 import { z } from "zod";
 
@@ -6,10 +7,11 @@ import {
   GAME_DEFAULT_TIME_LIMIT_SECONDS,
 } from "../constants";
 import { firestore } from "../deps/firestore";
-import { InvitingMembersFlowRoom } from "../schemas/room";
+import { ClientSceneLobby, ClientSceneSchedule } from "../schemas/clientScene";
+import { RoomInInvitingMembers } from "../schemas/room";
 
 const createRoomParamsSchema = z.object({
-  playerName: z.string().default("default"),
+  memberDisplayName: z.string().default("default"),
   timeLimitSeconds: z.number().default(GAME_DEFAULT_TIME_LIMIT_SECONDS),
   questionCount: z.number().default(GAME_DEFAULT_QUESTION_COUNT),
 });
@@ -35,18 +37,24 @@ export const createRoom = functions.https.onCall(
     }
 
     try {
-      const { playerName, questionCount, timeLimitSeconds } =
+      const { memberDisplayName, questionCount, timeLimitSeconds } =
         createRoomParamsSchema.parse(data);
 
-      const roomState: InvitingMembersFlowRoom = {
+      const schedule: ClientSceneSchedule = {
+        scene: { kind: "LOBBY" } satisfies ClientSceneLobby,
+        startDate: FirestoreTimestamp.fromDate(new Date()),
+      };
+
+      const room: RoomInInvitingMembers = {
         status: "INVITING_MEMBERS",
-        members: [{ playerName, userId }],
+        members: [{ displayName: memberDisplayName, userId }],
         membersReadyState: {},
+        clientSceneSchedules: [schedule],
         timeLimitSeconds,
         questionCount,
       };
 
-      const docRef = await firestore.collection("rooms").add(roomState);
+      const docRef = await firestore.collection("rooms").add(room);
 
       const roomId = docRef.id;
 
