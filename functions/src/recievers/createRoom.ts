@@ -60,7 +60,7 @@ export const createRoom = functions.https.onCall(
 
       return { success: true, roomId };
     } catch (e) {
-      return { success: false, error: "Unknown error" };
+      return { success: false, error: `${e}` };
     }
   }
 );

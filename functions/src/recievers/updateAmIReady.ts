@@ -17,6 +17,7 @@ import {
   roomInInvitingMembersSchema,
   Question,
   RoomInGameStarted,
+  PlayerQuestionAnswerTable,
 } from "../schemas/room";
 
 const UpdateAmIReadyParamsSchema = z.object({
@@ -97,6 +98,9 @@ const prepareGameStart = async (
     new Date()
   );
 
+  const playerQuestionAnswerTable: PlayerQuestionAnswerTable =
+    Object.fromEntries(members.map((m) => [m.userId, []]));
+
   return {
     status: "GAME_STARTED",
     members,
@@ -104,7 +108,7 @@ const prepareGameStart = async (
     questionCount,
     clientSceneSchedules,
     questions,
-    playerQuestionAnswerTable: {},
+    playerQuestionAnswerTable,
   };
 };
 
@@ -149,13 +153,13 @@ export const updateAmIReady = functions.https.onCall(
             delete membersReadyState[userId];
           }
 
-          const isAllMemberReady = room.members.reduce(
+          const areAllMembersReady = room.members.reduce(
             (prev, member) => prev && membersReadyState[member.userId],
             true
           );
 
-          if (isAllMemberReady) {
-            const roomNextState = prepareGameStart(room);
+          if (areAllMembersReady) {
+            const roomNextState = await prepareGameStart(room);
             tx.set(roomDoc.ref, roomNextState);
           } else {
             tx.update(roomDoc.ref, {
@@ -167,7 +171,7 @@ export const updateAmIReady = functions.https.onCall(
         }
       );
     } catch (e) {
-      return { success: false, error: "Internal server error" };
+      return { success: false, error: `${e}` };
     }
   }
 );

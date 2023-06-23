@@ -15,6 +15,7 @@ import {
   PlayerQuestionAnswerTable,
   Question,
   Room,
+  RoomInGameStarted,
   roomInGameStartedSchema,
   RoomMember,
 } from "../schemas/room";
@@ -102,40 +103,43 @@ export const submitAnswer = functions.https.onCall(
           }
 
           // 回答を記録する
-          const updatedMemberAnswerMap = addAnswer(
+          const playerQuestionAnswerTable = setPlayerAnswer(
             room.playerQuestionAnswerTable,
             userId,
             questionIndex,
             price
           );
+          const updatePayload: Partial<RoomInGameStarted> = {
+            playerQuestionAnswerTable,
+          };
 
-          tx.update(roomDocSnap.ref, {
-            memberAnswerMap: updatedMemberAnswerMap,
-          });
+          tx.update(roomDocSnap.ref, updatePayload);
 
           // 全員が回答した場合は、以降の問題の出題時刻を前倒ししてFirestoreに記録する
           const allMemberAnswered = checkAllMembersAnswered(
             room.members,
-            room.playerQuestionAnswerTable,
+            playerQuestionAnswerTable,
             questionIndex
           );
 
           if (allMemberAnswered) {
-            const newQuestions = recalculateClientSceneSchedules(
+            const schedules = recalculateClientSceneSchedules(
               room.questions,
               questionIndex,
               room.timeLimitSeconds,
               new Date()
             );
-
-            tx.update(roomDocSnap.ref, { questions: newQuestions });
+            const updatePayload: Partial<RoomInGameStarted> = {
+              clientSceneSchedules: schedules,
+            };
+            tx.update(roomDocSnap.ref, updatePayload);
           }
 
           return { success: true };
         }
       );
     } catch (e) {
-      return { success: false, error: "Unknown error" };
+      return { success: false, error: `${e}` };
     }
   }
 );
@@ -166,17 +170,15 @@ const checkCurrentQuestionIndexIs = (is: number, room: Room, now: Date) => {
 };
 
 // 回答を追加してMemberAnswerMapを再構築する
-const addAnswer = (
-  memberAnswerMap: PlayerQuestionAnswerTable,
-  memberId: string,
+const setPlayerAnswer = (
+  playerQuestionAnswerTable: PlayerQuestionAnswerTable,
+  userId: string,
   questionIndex: number,
   price: number
 ) => {
-  const newMap: PlayerQuestionAnswerTable = {};
-  for (const [mId, answers] of Object.entries(memberAnswerMap)) {
-    newMap[mId] =
-      mId === memberId ? { ...answers, [questionIndex]: price } : answers;
-  }
+  const cloned = structuredClone(playerQuestionAnswerTable);
+  cloned[userId][questionIndex] = price;
+  return cloned;
 };
 
 // questionIndex番目の問題について全員回答したか調べる
