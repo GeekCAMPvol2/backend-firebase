@@ -3,3 +3,4 @@ export { joinRoom } from "./joinRoom";
 export { leaveRoom } from "./leaveRoom";
 export { updateAmIReady } from "./updateAmIReady";
 export { submitAnswer } from "./submitAnswer";
+export { getSoloQuestions } from "./getSoloQuestions";
